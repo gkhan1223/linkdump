@@ -19,6 +19,14 @@ export default function LoginPage() {
   const redirectTo = searchParams.get('redirectTo') || '/';
   const supabase = createClient();
 
+  // 환경변수 디버깅
+  console.log('[Login] Environment check:', {
+    hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+    hasKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    urlPrefix: process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 20),
+    keyPrefix: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.substring(0, 10),
+  });
+
   // Admin 로그인 (이메일 + 비밀번호)
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();

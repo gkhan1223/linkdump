@@ -58,11 +58,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initializeAuth = async () => {
       console.log('[AuthContext] Initializing auth...');
+
+      // 환경변수 확인
+      console.log('[AuthContext] Environment check:', {
+        hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+        hasKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      });
+
       try {
         console.log('[AuthContext] Calling getSession...');
+
+        // 타임아웃 추가 (10초)
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('getSession timeout after 10s')), 10000)
+        );
+
+        const sessionPromise = supabase.auth.getSession();
+
         const {
           data: { session },
-        } = await supabase.auth.getSession();
+        } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+
         console.log('[AuthContext] getSession result:', session ? 'session exists' : 'no session');
 
         if (session?.user) {
