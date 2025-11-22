@@ -57,19 +57,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // 초기 세션 확인
   useEffect(() => {
     const initializeAuth = async () => {
+      console.log('[AuthContext] Initializing auth...');
       try {
+        console.log('[AuthContext] Calling getSession...');
         const {
           data: { session },
         } = await supabase.auth.getSession();
+        console.log('[AuthContext] getSession result:', session ? 'session exists' : 'no session');
 
         if (session?.user) {
+          console.log('[AuthContext] User found, fetching profile...');
           setUser(session.user);
           const profileData = await fetchProfile(session.user.id);
           setProfile(profileData);
+          console.log('[AuthContext] Profile loaded:', profileData?.role);
         }
       } catch (error) {
-        console.error('Error initializing auth:', error);
+        console.error('[AuthContext] Error initializing auth:', error);
       } finally {
+        console.log('[AuthContext] Setting loading to false');
         setLoading(false);
       }
     };

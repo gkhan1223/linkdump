@@ -34,19 +34,25 @@ export default function LoginPage() {
       if (error) throw error;
 
       // 프로필 확인 (역할이 admin인지 검증)
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', data.user.id)
         .single();
 
-      if (profile?.role !== 'admin') {
+      if (profileError) {
+        console.error('Profile error:', profileError);
+        throw new Error('프로필 조회에 실패했습니다: ' + profileError.message);
+      }
+
+      if ((profile as any)?.role !== 'admin') {
         await supabase.auth.signOut();
         throw new Error('Admin 계정만 로그인할 수 있습니다.');
       }
 
       router.push('/admin/dashboard');
     } catch (err: any) {
+      console.error('Login error:', err);
       setError(err.message || '로그인에 실패했습니다.');
     } finally {
       setLoading(false);
