@@ -26,12 +26,22 @@ export default function LoginPage() {
     setError(null);
 
     try {
+      console.log('[Login] Starting admin login...');
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
+      console.log('[Login] signInWithPassword result:', { hasData: !!data, error });
+
       if (error) throw error;
+
+      if (!data.user) {
+        throw new Error('로그인에 성공했지만 사용자 정보를 가져올 수 없습니다.');
+      }
+
+      console.log('[Login] User authenticated, ID:', data.user.id);
+      console.log('[Login] Fetching profile...');
 
       // 프로필 확인 (역할이 admin인지 검증)
       const { data: profile, error: profileError } = await supabase
@@ -40,19 +50,28 @@ export default function LoginPage() {
         .eq('id', data.user.id)
         .single();
 
+      console.log('[Login] Profile fetch result:', { profile, profileError });
+
       if (profileError) {
-        console.error('Profile error:', profileError);
+        console.error('[Login] Profile error:', profileError);
         throw new Error('프로필 조회에 실패했습니다: ' + profileError.message);
       }
+
+      if (!profile) {
+        throw new Error('프로필이 존재하지 않습니다. 관리자에게 문의하세요.');
+      }
+
+      console.log('[Login] Profile role:', (profile as any)?.role);
 
       if ((profile as any)?.role !== 'admin') {
         await supabase.auth.signOut();
         throw new Error('Admin 계정만 로그인할 수 있습니다.');
       }
 
+      console.log('[Login] Admin verification passed, redirecting...');
       router.push('/admin/dashboard');
     } catch (err: any) {
-      console.error('Login error:', err);
+      console.error('[Login] Login error:', err);
       setError(err.message || '로그인에 실패했습니다.');
     } finally {
       setLoading(false);
