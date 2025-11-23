@@ -9,12 +9,16 @@ import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/lib/auth/auth-context';
+import { useEffect, useState } from 'react';
 
 interface CourseCardProps {
   course: Course;
   linkCount?: number;
   onEdit?: (course: Course) => void;
   onDelete?: (course: Course) => void;
+  isInstructor?: boolean;
 }
 
 const statusConfig = {
@@ -25,15 +29,57 @@ const statusConfig = {
 
 export default function CourseCard({
   course,
-  linkCount = 0,
+  linkCount,
   onEdit,
   onDelete,
+  isInstructor = false,
 }: CourseCardProps) {
+  const { user } = useAuth();
+  const supabase = createClient();
   const statusInfo = statusConfig[course.status];
   const isCompleted = course.status === 'completed';
 
+  const [counts, setCounts] = useState<{
+    admin: number;
+    instructor: number;
+    total: number;
+  }>({ admin: 0, instructor: 0, total: 0 });
+
+  // 링크 개수 조회
+  useEffect(() => {
+    const fetchLinkCount = async () => {
+      const { data, error } = await supabase
+        .from('links')
+        .select('is_admin_created, created_by')
+        .eq('course_id', course.id);
+
+      if (error || !data) return;
+
+      const adminLinks = data.filter((link) => link.is_admin_created).length;
+      const instructorLinks = isInstructor
+        ? data.filter((link) => !link.is_admin_created && link.created_by === user?.id).length
+        : 0;
+
+      setCounts({
+        admin: adminLinks,
+        instructor: instructorLinks,
+        total: data.length,
+      });
+    };
+
+    if (linkCount === undefined) {
+      fetchLinkCount();
+    } else {
+      setCounts({ admin: 0, instructor: 0, total: linkCount });
+    }
+  }, [course.id, isInstructor, user?.id, linkCount, supabase]);
+
+  const linkHref = isInstructor
+    ? `/instructor/courses/${course.id}`
+    : `/admin/courses/${course.id}`;
+
   return (
-    <Link href={`/admin/courses/${course.id}`}>
+    <Link href={linkHref}>
       <Card
         className={cn(
           'p-4 hover:shadow-lg transition-all cursor-pointer group relative',
@@ -69,7 +115,13 @@ export default function CourseCard({
         {/* 링크 개수 */}
         <div className="flex items-center gap-2 text-sm text-gray-500">
           <LinkIcon className="h-4 w-4" />
-          <span>{linkCount}개</span>
+          {isInstructor ? (
+            <span>
+              {counts.admin}+{counts.instructor}개
+            </span>
+          ) : (
+            <span>{counts.total}개</span>
+          )}
         </div>
 
         {/* 호버 시 표시되는 액션 버튼 */}
